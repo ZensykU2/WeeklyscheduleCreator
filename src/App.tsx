@@ -4,6 +4,7 @@ import { getCurrentWeekRange, timeToMinutes, minutesToTime } from './utils/dateU
 import { exportToExcel } from './utils/exportUtils';
 import { ScheduleGrid } from './components/ScheduleGrid';
 import { Sidebar } from './components/Sidebar';
+import { CustomDragLayer } from './components/CustomDragLayer';
 import { SettingsDialog } from './components/SettingsDialog';
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { DndProvider } from 'react-dnd';
@@ -108,16 +109,17 @@ function App() {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (isSettingsOpen) return; // Don't handle shortcuts if modal is open
 
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+            // Use keyCode for keyboard layout independence: Z=90, Y=89, D=68
+            if ((e.ctrlKey || e.metaKey) && e.keyCode === 90) {
                 e.preventDefault();
                 undo();
             }
-            if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+            if ((e.ctrlKey || e.metaKey) && e.keyCode === 89) {
                 e.preventDefault();
                 redo();
             }
             // Duplicate Logic
-            if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+            if ((e.ctrlKey || e.metaKey) && e.keyCode === 68) {
                 if (selectedEntryIds.size > 0) {
                     e.preventDefault();
                     // Duplicate all selected entries
@@ -430,6 +432,7 @@ function App() {
 
             <div className="flex flex-1 overflow-hidden relative z-10" style={{ contain: 'layout paint', transform: 'translate3d(0,0,0)', backfaceVisibility: 'hidden' }}>
                 <DndProvider backend={HTML5Backend}>
+                    <CustomDragLayer presets={presets} dayPresets={dayPresets} />
                     <Sidebar
                         presets={presets}
                         onUpdatePreset={(updated) => setPresets(prev => prev.map(p => p.id === updated.id ? updated : p))}

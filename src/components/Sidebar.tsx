@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDrag } from 'react-dnd';
+import { getEmptyImage } from 'react-dnd-html5-backend';
 import { TimeBlock, TimeBlockType, DayPreset } from '../types';
 import { Plus, Trash2, GripVertical, Check, X, Briefcase, GraduationCap, Coffee, School, BookOpen, UserCheck, Palette, PanelLeft, PanelLeftClose, ChevronLeft, ChevronRight, Pencil, CalendarDays, LayoutTemplate } from 'lucide-react';
 import { useClickOutside } from '../hooks/useClickOutside';
@@ -340,13 +341,18 @@ const DraggablePreset: React.FC<{
         if (showColors) setShowColors(false);
     });
 
-    const [{ isDragging }, drag] = useDrag(() => ({
+    const [{ isDragging }, drag, preview] = useDrag(() => ({
         type: 'PRESET',
         item: { id: preset.id },
         collect: (monitor) => ({
             isDragging: !!monitor.isDragging(),
         }),
     }), [preset.id]);
+
+    // Hide native drag preview - we use CustomDragLayer instead
+    useEffect(() => {
+        preview(getEmptyImage(), { captureDraggingState: true });
+    }, [preview]);
 
     const typeLabels: Record<TimeBlockType, string> = {
         'project-int': 'Projekt (Int)',
@@ -481,13 +487,18 @@ const DraggableDayPreset: React.FC<{
     onDelete: (id: string) => void;
     onUpdate: (preset: DayPreset) => void;
 }> = ({ preset, onDelete, onUpdate }) => {
-    const [{ isDragging }, drag] = useDrag(() => ({
+    const [{ isDragging }, drag, preview] = useDrag(() => ({
         type: 'DAY_PRESET',
         item: { id: preset.id },
         collect: (monitor) => ({
             isDragging: !!monitor.isDragging(),
         }),
     }), [preset.id]);
+
+    // Hide native drag preview - we use CustomDragLayer instead
+    useEffect(() => {
+        preview(getEmptyImage(), { captureDraggingState: true });
+    }, [preview]);
 
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(preset.name);
