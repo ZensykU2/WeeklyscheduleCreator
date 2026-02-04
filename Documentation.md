@@ -58,7 +58,8 @@ Targeting a consistent 60fps experience in Electron.
 - **Promotion**: Containers use `translateZ(0)` to force GPU compositing.
 - **Backface Isolation**: `backface-visibility: hidden` prevents unnecessary redraws when the parent container shifts.
 
-### Render Tree Pruning
+### Render Tree Pruning & Layout Isolation
+- **Layout Isolation (CSS `contain`)**: During sidebar transitions (0.4s), the `ScheduleGrid` is toggled to `contain: strict`. This "freezes" the internal layout calculations of the hundreds of time entries, allowing the sidebar to resize the container smoothly without triggering expensive re-layouts of the entries until the animation stops.
 - **`content-visibility: hidden`**: Applied to the Sidebar's inner content when collapsed. This instructs Chromium to completely skip the "Layout" and "Paint" phases for those DOM nodes, drastically reducing the cost of the width animation.
 - **Memoization**: Every core component is a `React.memo`, using shallow comparison on props to skip re-renders.
 

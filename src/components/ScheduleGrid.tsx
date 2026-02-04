@@ -25,6 +25,7 @@ interface ScheduleGridProps {
     onTogglePinDay: (day: Day) => void;
     dayPresets: DayPreset[];
     onSaveDayAsPreset: (day: Day) => void;
+    isAnimating?: boolean;
 }
 
 
@@ -43,7 +44,8 @@ const ScheduleGridBase: React.FC<ScheduleGridProps> = ({
     pinnedDays,
     onTogglePinDay,
     dayPresets,
-    onSaveDayAsPreset
+    onSaveDayAsPreset,
+    isAnimating = false
 }) => {
     const startMins = timeToMinutes(startTime);
     const endMins = timeToMinutes(endTime);
@@ -63,8 +65,10 @@ const ScheduleGridBase: React.FC<ScheduleGridProps> = ({
         <div
             className="flex-1 overflow-auto bg-slate-900/60 rounded-[2rem] border border-white/5 shadow-2xl relative"
             style={{
-                contain: 'paint layout',
-                willChange: 'transform'
+                contain: isAnimating ? 'strict' : 'layout paint',
+                willChange: isAnimating ? 'transform' : 'auto',
+                // Prevent horizontal scrollbar flickering during layout shift
+                overflowX: isAnimating ? 'hidden' : 'auto'
             }}
             onClick={() => onSelectEntry(null, false)}
         >
@@ -313,7 +317,7 @@ const DayColumn: React.FC<DayColumnProps> = ({ day, startTime, endTime, entries,
                 isOver && "bg-indigo-600/10"
             )}
             style={{
-                contain: 'content'
+                contain: 'layout'
             }}
             onMouseLeave={() => setHoverPreview([])}
         >
@@ -502,7 +506,7 @@ const DraggableEntry: React.FC<DraggableEntryProps> = ({ entry, block, onDelete,
                         const event = new CustomEvent('delete-group', { detail: entry.dayPresetGroupId });
                         window.dispatchEvent(event);
                     }}
-                    className="absolute -top-3 -right-3 p-1.5 bg-red-600 hover:bg-red-500 text-white rounded-full shadow-lg scale-0 group-hover:scale-110 transition-all z-[110] cursor-pointer"
+                    className="absolute -top-3 -right-3 p-1.5 bg-red-600 hover:bg-red-500 text-white rounded-full shadow-lg scale-0 group-hover:scale-110 transition-all z-[200] cursor-pointer"
                     title="Ganze Gruppe löschen"
                 >
                     <Trash2 size={12} />

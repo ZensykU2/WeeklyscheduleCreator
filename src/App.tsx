@@ -34,6 +34,7 @@ function App() {
     const [selectedEntryIds, setSelectedEntryIds] = useState<Set<string>>(new Set());
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [sidebarWidth, setSidebarWidth] = useState(320);
+    const [isSidebarAnimating, setIsSidebarAnimating] = useState(false);
     const [deletedSlots, setDeletedSlots] = useState<{ day: string; startTime: string; deletedInWeek: { year: number; week: number } }[]>([]);
 
     const isLoaded = useRef(false);
@@ -440,6 +441,7 @@ function App() {
                         onAddPreset={(p) => setPresets(prev => [...prev, p])}
                         isCollapsed={isSidebarCollapsed}
                         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                        onAnimationChange={setIsSidebarAnimating}
                         width={sidebarWidth}
                         onWidthChange={setSidebarWidth}
                         dayPresets={dayPresets}
@@ -540,6 +542,7 @@ function App() {
                                     endTime={settings.dayEnd}
                                     entries={weekPlan.entries}
                                     presets={presets}
+                                    isAnimating={isSidebarAnimating}
                                     onAddEntry={handleAddEntry}
                                     onDeleteEntry={handleDeleteEntry}
                                     onUpdateEntry={handleUpdateEntry}

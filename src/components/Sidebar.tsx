@@ -26,6 +26,7 @@ interface SidebarProps {
     onAddDayPreset: (preset: DayPreset) => void;
     onDeleteDayPreset: (id: string) => void;
     onUpdateDayPreset: (preset: DayPreset) => void;
+    onAnimationChange?: (animating: boolean) => void;
 }
 
 const PREMIUM_COLORS = [
@@ -77,12 +78,14 @@ const ColorPicker: React.FC<{
     );
 };
 
-const SidebarBase: React.FC<SidebarProps> = ({ width, onWidthChange, isCollapsed, onToggleCollapse, presets, onAddPreset, onDeletePreset, onUpdatePreset, dayPresets, onAddDayPreset, onDeleteDayPreset, onUpdateDayPreset }) => {
+const SidebarBase: React.FC<SidebarProps> = ({ width, onWidthChange, isCollapsed, onToggleCollapse, onAnimationChange, presets, onAddPreset, onDeletePreset, onUpdatePreset, dayPresets, onAddDayPreset, onDeleteDayPreset, onUpdateDayPreset }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newName, setNewName] = useState('');
     const [newColor, setNewColor] = useState(PREMIUM_COLORS[0]);
     const [newType, setNewType] = useState<TimeBlockType>('project-int');
     const [isResizing, setIsResizing] = useState(false);
+    // Track animation state to apply optimizations during transitions
+    const [isTransitioning, setIsTransitioning] = useState(false);
 
     const addFormRef = useClickOutside(() => {
         if (isAdding) setIsAdding(false);
@@ -125,18 +128,31 @@ const SidebarBase: React.FC<SidebarProps> = ({ width, onWidthChange, isCollapsed
         };
     }, [isResizing, resize, stopResizing]);
 
+    // Handle transition events to optimize during animation
+    const handleTransitionStart = React.useCallback(() => {
+        setIsTransitioning(true);
+        onAnimationChange?.(true);
+    }, [onAnimationChange]);
+
+    const handleTransitionEnd = React.useCallback(() => {
+        setIsTransitioning(false);
+        onAnimationChange?.(false);
+    }, [onAnimationChange]);
+
     return (
-        <aside
-            className="bg-slate-950 border-r border-white/5 flex flex-col z-40 relative group/sidebar h-full"
+        <div
+            className="relative z-40 h-full shrink-0 overflow-visible"
             style={{
+                // Synchronize width change with the transform animation
                 width: isCollapsed ? '0px' : `${width}px`,
                 transition: isResizing ? 'none' : 'width 0.4s cubic-bezier(0.4, 0, 0, 1)',
-                willChange: 'width',
-                contain: 'layout',
-                transform: 'translateZ(0)'
+                // Only use will-change during transition to optimize performance
+                willChange: isTransitioning ? 'width' : 'auto',
             }}
+            onTransitionStart={handleTransitionStart}
+            onTransitionEnd={handleTransitionEnd}
         >
-            {/* Collapse Toggle - Centered and High Visibility */}
+            {/* Toggle Button - Outside the sliding content for stable positioning */}
             <button
                 onClick={(e) => {
                     e.stopPropagation();
@@ -144,188 +160,212 @@ const SidebarBase: React.FC<SidebarProps> = ({ width, onWidthChange, isCollapsed
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
                 className={cn(
-                    "absolute top-1/2 -right-3.5 -translate-y-1/2 z-[100] w-7 h-12 bg-indigo-600 hover:bg-indigo-500 border border-white/10 rounded-r-xl flex items-center justify-center text-white shadow-[8px_0_15px_-3px_rgba(79,70,229,0.3)] hover:w-8 active:scale-95 cursor-pointer",
-                    "transition-all duration-[400ms] cubic-bezier(0.4, 0, 0, 1)",
-                    isCollapsed ? "translate-x-3.5" : "translate-x-0"
+                    "absolute top-1/2 -translate-y-1/2 z-[100] w-7 h-12 bg-indigo-600 hover:bg-indigo-500 border border-white/10 rounded-r-xl flex items-center justify-center text-white shadow-[8px_0_15px_-3px_rgba(79,70,229,0.3)] hover:w-8 active:scale-95 cursor-pointer",
+                    "transition-[width,background-color,transform] duration-200"
                 )}
+                style={{
+                    // Always positioned at the right edge of the wrapper
+                    right: '-28px'
+                }}
                 title={isCollapsed ? "Sidebar öffnen" : "Sidebar schließen"}
             >
                 {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </button>
 
-            {/* Resize Handle */}
-            {!isCollapsed && (
-                <div
-                    onMouseDown={startResizing}
-                    className="absolute inset-y-0 -right-1 w-2 cursor-col-resize hover:bg-indigo-500/20 active:bg-indigo-500/40 transition-colors z-50"
-                />
-            )}
-
-            <div
-                className={cn(
-                    "flex flex-col h-full overflow-hidden transition-opacity duration-300",
-                    isCollapsed ? "opacity-0 pointer-events-none" : "opacity-100"
-                )}
+            {/* Sidebar Content - Uses transform for smooth GPU-accelerated animation */}
+            <aside
+                className="bg-slate-950 border-r border-white/5 flex flex-col relative group/sidebar h-full overflow-hidden"
                 style={{
                     width: `${width}px`,
-                    contentVisibility: isCollapsed ? 'hidden' : 'visible'
+                    // Use transform for the slide animation - GPU accelerated, no layout reflow
+                    transform: isCollapsed ? `translateX(-${width}px)` : 'translateX(0)',
+                    transition: isResizing ? 'none' : 'transform 0.4s cubic-bezier(0.4, 0, 0, 1)',
+                    // Only use willChange during actual transitions to avoid excessive compositing layers
+                    willChange: isTransitioning ? 'transform' : 'auto',
+                    contain: isCollapsed ? 'strict' : 'layout style paint',
+                    backfaceVisibility: 'hidden',
+                    // Position absolutely within wrapper
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
                 }}
             >
-                <div className="absolute inset-y-0 right-0 w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent" />
-
-                <div className="p-6 pb-2 flex items-center justify-between">
-                    <div className="flex flex-col">
-                        <h2 className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">Kategorien</h2>
-                        <span className="text-lg font-black text-white tracking-tight">Vorlagen</span>
-                    </div>
-                    {!isAdding && (
-                        <button
-                            onClick={() => setIsAdding(true)}
-                            className="p-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all active:scale-95 text-slate-400 hover:text-white cursor-pointer"
-                        >
-                            <Plus size={16} />
-                        </button>
-                    )}
-                </div>
+                {/* Resize Handle */}
+                {!isCollapsed && (
+                    <div
+                        onMouseDown={startResizing}
+                        className="absolute inset-y-0 -right-1 w-2 cursor-col-resize hover:bg-indigo-500/20 active:bg-indigo-500/40 transition-colors z-50"
+                    />
+                )}
 
                 <div
-                    className="px-6 flex-1 overflow-y-auto space-y-3 pb-8 cursor-default"
-                    onClick={(e) => {
-                        // Only trigger quick-add if no presets exist and clicking empty space
-                        if (presets.length === 0 && e.target === e.currentTarget && !isAdding) {
-                            setIsAdding(true);
-                        }
+                    className={cn(
+                        "flex flex-col h-full overflow-hidden transition-opacity duration-300",
+                        isCollapsed ? "opacity-0 pointer-events-none" : "opacity-100"
+                    )}
+                    style={{
+                        width: `${width}px`,
+                        contentVisibility: isCollapsed ? 'hidden' : 'visible'
                     }}
                 >
-                    <AnimatePresence>
-                        {isAdding && (
-                            <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                className="overflow-hidden"
-                            >
-                                <div ref={addFormRef} className="p-4 bg-white/5 border border-indigo-500/30 rounded-2xl space-y-4 mb-4 mt-2">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Name</label>
-                                        <input
-                                            autoFocus
-                                            type="text"
-                                            value={newName}
-                                            onChange={(e) => setNewName(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-                                            placeholder="z.B. Meeting"
-                                            className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition-all"
-                                        />
-                                    </div>
+                    <div className="absolute inset-y-0 right-0 w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent" />
 
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Kategorie</label>
-                                        <div className="grid grid-cols-2 gap-1.5">
-                                            {[
-                                                { id: 'project-int', name: 'Projekt (Int)', icon: <Briefcase size={12} /> },
-                                                { id: 'project-ext', name: 'Projekt (Ext)', icon: <UserCheck size={12} /> },
-                                                { id: 'school-reg', name: 'Schule (Reg)', icon: <School size={12} /> },
-                                                { id: 'school-uk', name: 'ÜK', icon: <BookOpen size={12} /> },
-                                                { id: 'weiterbildung', name: 'W.bildung', icon: <GraduationCap size={12} /> },
-                                                { id: 'break', name: 'Pause', icon: <Coffee size={12} /> }
-                                            ].map(t => (
-                                                <button
-                                                    key={t.id}
-                                                    onClick={() => setNewType(t.id as TimeBlockType)}
-                                                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold transition-all border cursor-pointer ${newType === t.id
-                                                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
-                                                        : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10'
-                                                        }`}
-                                                >
-                                                    {t.icon}
-                                                    <span>{t.name}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Farbe</label>
-                                        <ColorPicker
-                                            selected={newColor}
-                                            onChange={setNewColor}
-                                            orientation="grid"
-                                        />
-                                        <div className="flex gap-2 pt-2">
-                                            <button
-                                                onClick={() => setIsAdding(false)}
-                                                className="flex-1 py-2.5 hover:bg-white/5 rounded-xl text-slate-500 hover:text-slate-300 border border-white/5 cursor-pointer transition-[background-color,color,transform] active:scale-95 duration-200 text-xs font-bold uppercase tracking-wider"
-                                            >
-                                                Abbrechen
-                                            </button>
-                                            <button
-                                                onClick={handleAdd}
-                                                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white shadow-lg shadow-indigo-600/20 cursor-pointer transition-[background-color,transform] active:scale-95 duration-200 text-xs font-bold uppercase tracking-wider"
-                                            >
-                                                Erstellen
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    <AnimatePresence initial={false}>
-                        {presets.map((preset) => (
-                            <DraggablePresetMemo
-                                key={preset.id}
-                                preset={preset}
-                                onDelete={onDeletePreset}
-                                onUpdate={onUpdatePreset}
-                            />
-                        ))}
-                        {presets.length === 0 && !isAdding && (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="flex flex-col items-center justify-center py-12 px-6 text-center space-y-4 cursor-pointer hover:bg-white/5 transition-colors rounded-3xl"
+                    <div className="p-6 pb-2 flex items-center justify-between">
+                        <div className="flex flex-col">
+                            <h2 className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">Kategorien</h2>
+                            <span className="text-lg font-black text-white tracking-tight">Vorlagen</span>
+                        </div>
+                        {!isAdding && (
+                            <button
                                 onClick={() => setIsAdding(true)}
+                                className="p-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all active:scale-95 text-slate-400 hover:text-white cursor-pointer"
                             >
-                                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-slate-600 group-hover:bg-indigo-500/10 group-hover:text-indigo-400 transition-colors">
-                                    <Plus size={24} />
-                                </div>
-                                <p className="text-xs font-medium text-slate-600 max-w-[160px] leading-relaxed">Keine Vorlagen vorhanden. Klicke hier oder auf das + oben.</p>
-                            </motion.div>
+                                <Plus size={16} />
+                            </button>
                         )}
-                    </AnimatePresence>
+                    </div>
 
-                    {/* Day Presets Section */}
-                    {dayPresets && dayPresets.length > 0 && (
-                        <>
-                            <div className="h-px bg-white/10 my-4 mx-2" />
-                            <div className="px-1 flex items-center gap-3 mb-4">
-                                <div className="p-2 rounded-lg bg-indigo-500/10">
-                                    <LayoutTemplate size={18} className="text-indigo-400" />
+                    <div
+                        className="px-6 flex-1 overflow-y-auto space-y-3 pb-8 cursor-default"
+                        style={{ scrollbarGutter: 'stable' }}
+                        onClick={(e) => {
+                            // Only trigger quick-add if no presets exist and clicking empty space
+                            if (presets.length === 0 && e.target === e.currentTarget && !isAdding) {
+                                setIsAdding(true);
+                            }
+                        }}
+                    >
+                        <AnimatePresence>
+                            {isAdding && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="overflow-hidden"
+                                >
+                                    <div ref={addFormRef} className="p-4 bg-white/5 border border-indigo-500/30 rounded-2xl space-y-4 mb-4 mt-2">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Name</label>
+                                            <input
+                                                autoFocus
+                                                type="text"
+                                                value={newName}
+                                                onChange={(e) => setNewName(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+                                                placeholder="z.B. Meeting"
+                                                className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition-all"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Kategorie</label>
+                                            <div className="grid grid-cols-2 gap-1.5">
+                                                {[
+                                                    { id: 'project-int', name: 'Projekt (Int)', icon: <Briefcase size={12} /> },
+                                                    { id: 'project-ext', name: 'Projekt (Ext)', icon: <UserCheck size={12} /> },
+                                                    { id: 'school-reg', name: 'Schule (Reg)', icon: <School size={12} /> },
+                                                    { id: 'school-uk', name: 'ÜK', icon: <BookOpen size={12} /> },
+                                                    { id: 'weiterbildung', name: 'W.bildung', icon: <GraduationCap size={12} /> },
+                                                    { id: 'break', name: 'Pause', icon: <Coffee size={12} /> }
+                                                ].map(t => (
+                                                    <button
+                                                        key={t.id}
+                                                        onClick={() => setNewType(t.id as TimeBlockType)}
+                                                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-bold transition-all border cursor-pointer ${newType === t.id
+                                                            ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
+                                                            : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10'
+                                                            }`}
+                                                    >
+                                                        {t.icon}
+                                                        <span>{t.name}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Farbe</label>
+                                            <ColorPicker
+                                                selected={newColor}
+                                                onChange={setNewColor}
+                                                orientation="grid"
+                                            />
+                                            <div className="flex gap-2 pt-2">
+                                                <button
+                                                    onClick={() => setIsAdding(false)}
+                                                    className="flex-1 py-2.5 hover:bg-white/5 rounded-xl text-slate-500 hover:text-slate-300 border border-white/5 cursor-pointer transition-[background-color,color,transform] active:scale-95 duration-200 text-xs font-bold uppercase tracking-wider"
+                                                >
+                                                    Abbrechen
+                                                </button>
+                                                <button
+                                                    onClick={handleAdd}
+                                                    className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white shadow-lg shadow-indigo-600/20 cursor-pointer transition-[background-color,transform] active:scale-95 duration-200 text-xs font-bold uppercase tracking-wider"
+                                                >
+                                                    Erstellen
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        <AnimatePresence initial={false}>
+                            {presets.map((preset) => (
+                                <DraggablePresetMemo
+                                    key={preset.id}
+                                    preset={preset}
+                                    onDelete={onDeletePreset}
+                                    onUpdate={onUpdatePreset}
+                                />
+                            ))}
+                            {presets.length === 0 && !isAdding && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="flex flex-col items-center justify-center py-12 px-6 text-center space-y-4 cursor-pointer hover:bg-white/5 transition-colors rounded-3xl"
+                                    onClick={() => setIsAdding(true)}
+                                >
+                                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-slate-600 group-hover:bg-indigo-500/10 group-hover:text-indigo-400 transition-colors">
+                                        <Plus size={24} />
+                                    </div>
+                                    <p className="text-xs font-medium text-slate-600 max-w-[160px] leading-relaxed">Keine Vorlagen vorhanden. Klicke hier oder auf das + oben.</p>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Day Presets Section */}
+                        {dayPresets && dayPresets.length > 0 && (
+                            <>
+                                <div className="h-px bg-white/10 my-4 mx-2" />
+                                <div className="px-1 flex items-center gap-3 mb-4">
+                                    <div className="p-2 rounded-lg bg-indigo-500/10">
+                                        <LayoutTemplate size={18} className="text-indigo-400" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <h2 className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">Ganzer Tag</h2>
+                                        <span className="text-lg font-black text-white tracking-tight leading-tight">Tagesvorlagen</span>
+                                    </div>
                                 </div>
-                                <div className="flex flex-col">
-                                    <h2 className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">Ganzer Tag</h2>
-                                    <span className="text-lg font-black text-white tracking-tight leading-tight">Tagesvorlagen</span>
+                                <div className="space-y-3">
+                                    <AnimatePresence initial={false}>
+                                        {dayPresets.map((preset) => (
+                                            <DraggableDayPresetMemo
+                                                key={preset.id}
+                                                preset={preset}
+                                                onDelete={onDeleteDayPreset}
+                                                onUpdate={onUpdateDayPreset}
+                                            />
+                                        ))}
+                                    </AnimatePresence>
                                 </div>
-                            </div>
-                            <div className="space-y-3">
-                                <AnimatePresence initial={false}>
-                                    {dayPresets.map((preset) => (
-                                        <DraggableDayPresetMemo
-                                            key={preset.id}
-                                            preset={preset}
-                                            onDelete={onDeleteDayPreset}
-                                            onUpdate={onUpdateDayPreset}
-                                        />
-                                    ))}
-                                </AnimatePresence>
-                            </div>
-                        </>
-                    )}
+                            </>
+                        )}
+                    </div>
                 </div>
-            </div>
-        </aside>
+            </aside>
+        </div>
     );
 };
 
