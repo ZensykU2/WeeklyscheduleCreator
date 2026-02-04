@@ -52,3 +52,9 @@ export interface Settings {
     exportFormat: 'excel' | 'googleSheets';
     pinnedDays: Day[];
 }
+
+export interface AppState {
+    weekPlan: WeekPlan;
+    presets: TimeBlock[];
+    dayPresets: DayPreset[];
+}

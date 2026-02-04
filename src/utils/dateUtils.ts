@@ -54,3 +54,7 @@ export function minutesToTime(minutes: number): string {
     const mins = minutes % 60;
     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 }
+
+export function getWeekNumber(date: Date): [number, number] {
+    return [getYear(date), getWeek(date, { weekStartsOn: 1 })];
+}
