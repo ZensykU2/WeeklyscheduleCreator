@@ -52,12 +52,10 @@ const ScheduleGridBase: React.FC<ScheduleGridProps> = ({
     const endMins = timeToMinutes(endTime);
     const totalMins = endMins - startMins;
 
-    // Memoize toggle handler
     const handleTogglePin = React.useCallback((day: Day) => {
         onTogglePinDay(day);
     }, [onTogglePinDay]);
 
-    // slots are ONLY the start hours
     const timeSlots = React.useMemo(() => Array.from({ length: Math.floor(totalMins / 60) }).map(
         (_, i) => minutesToTime(startMins + i * 60)
     ), [totalMins, startMins]);
@@ -68,13 +66,11 @@ const ScheduleGridBase: React.FC<ScheduleGridProps> = ({
             style={{
                 contain: isAnimating ? 'strict' : 'layout paint',
                 willChange: isAnimating ? 'transform' : 'auto',
-                // Prevent horizontal scrollbar flickering during layout shift
                 overflowX: isAnimating ? 'hidden' : 'auto'
             }}
             onClick={() => onSelectEntry(null, false)}
         >
             <div className="inline-flex min-w-full p-4">
-                {/* Time Column */}
                 <div className="w-20 sticky left-0 z-[60] bg-slate-950 border-r border-white/5 rounded-l-2xl">
                     <div className="h-12 border-b border-white/5" />
                     {timeSlots.map((time, i) => {
@@ -89,19 +85,11 @@ const ScheduleGridBase: React.FC<ScheduleGridProps> = ({
                             </div>
                         );
                     })}
-                    {/* End marker matches the last slot's end, might be redundant if we show ranges, 
-                        but let's keep it as a visual footer or remove if clutter. 
-                        User asked for "8:00 - 9:00". The last one "17:00" at bottom might be fine.
-                        Actually, having 8-9, 9-10... the last box 16-17. 
-                        The footer currently shows '17:00'.
-                        This is fine, it acts as a closing cap.
-                    */}
                     <div className="h-8 text-[10px] text-slate-400 flex items-center justify-center font-black tracking-widest uppercase border-t border-white/5 bg-white/5 rounded-bl-2xl">
                         {endTime}
                     </div>
                 </div>
 
-                {/* Day Columns */}
                 <div className="flex flex-1 min-w-0">
                     {days.map((day) => (
                         <DayColumn

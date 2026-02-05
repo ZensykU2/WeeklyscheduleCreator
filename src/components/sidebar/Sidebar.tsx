@@ -33,7 +33,6 @@ const SidebarBase: React.FC<SidebarProps> = ({ width, onWidthChange, isCollapsed
     const [isAdding, setIsAdding] = useState(false);
     const { t } = useTranslation();
     const [isResizing, setIsResizing] = useState(false);
-    // Track animation state to apply optimizations during transitions
     const [isTransitioning, setIsTransitioning] = useState(false);
 
     const handleAdd = (presetData: Omit<TimeBlock, 'id'>) => {
@@ -68,7 +67,6 @@ const SidebarBase: React.FC<SidebarProps> = ({ width, onWidthChange, isCollapsed
         };
     }, [isResizing, resize, stopResizing]);
 
-    // Handle transition events to optimize during animation
     const handleTransitionStart = React.useCallback(() => {
         setIsTransitioning(true);
         onAnimationChange?.(true);
@@ -83,16 +81,13 @@ const SidebarBase: React.FC<SidebarProps> = ({ width, onWidthChange, isCollapsed
         <div
             className="relative z-40 h-full shrink-0 overflow-visible"
             style={{
-                // Synchronize width change with the transform animation
                 width: isCollapsed ? '0px' : `${width}px`,
                 transition: isResizing ? 'none' : 'width 0.4s cubic-bezier(0.4, 0, 0, 1)',
-                // Only use will-change during transition to optimize performance
                 willChange: isTransitioning ? 'width' : 'auto',
             }}
             onTransitionStart={handleTransitionStart}
             onTransitionEnd={handleTransitionEnd}
         >
-            {/* Toggle Button - Outside the sliding content for stable positioning */}
             <button
                 onClick={(e) => {
                     e.stopPropagation();
@@ -104,34 +99,27 @@ const SidebarBase: React.FC<SidebarProps> = ({ width, onWidthChange, isCollapsed
                     "transition-[width,background-color,transform] duration-200"
                 )}
                 style={{
-                    // Always positioned at the right edge of the wrapper
                     right: '-28px'
                 }}
                 title={isCollapsed ? "Sidebar öffnen" : "Sidebar schließen"}
             >
                 {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </button>
-
-            {/* Sidebar Content - Uses transform for smooth GPU-accelerated animation */}
             <aside
                 className="bg-slate-950 border-r border-white/5 flex flex-col relative group/sidebar h-full overflow-hidden"
                 style={{
                     width: `${width}px`,
-                    // Use transform for the slide animation - GPU accelerated, no layout reflow
                     transform: isCollapsed ? `translateX(-${width}px)` : 'translateX(0)',
                     transition: isResizing ? 'none' : 'transform 0.4s cubic-bezier(0.4, 0, 0, 1)',
-                    // Only use willChange during actual transitions to avoid excessive compositing layers
                     willChange: isTransitioning ? 'transform' : 'auto',
                     contain: isCollapsed ? 'strict' : 'layout style paint',
                     backfaceVisibility: 'hidden',
-                    // Position absolutely within wrapper
                     position: 'absolute',
                     left: 0,
                     top: 0,
                     bottom: 0,
                 }}
             >
-                {/* Resize Handle */}
                 {!isCollapsed && (
                     <div
                         onMouseDown={startResizing}
@@ -170,7 +158,6 @@ const SidebarBase: React.FC<SidebarProps> = ({ width, onWidthChange, isCollapsed
                         className="px-6 flex-1 overflow-y-auto space-y-3 pb-8 cursor-default"
                         style={{ scrollbarGutter: 'stable' }}
                         onClick={(e) => {
-                            // Only trigger quick-add if no presets exist and clicking empty space
                             if (presets.length === 0 && e.target === e.currentTarget && !isAdding) {
                                 setIsAdding(true);
                             }
@@ -208,8 +195,6 @@ const SidebarBase: React.FC<SidebarProps> = ({ width, onWidthChange, isCollapsed
                                 </motion.div>
                             )}
                         </AnimatePresence>
-
-                        {/* Day Presets Section */}
                         {dayPresets && dayPresets.length > 0 && (
                             <>
                                 <div className="h-px bg-white/10 my-4 mx-2" />

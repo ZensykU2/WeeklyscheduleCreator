@@ -51,12 +51,10 @@ const ScheduleGridBase: React.FC<ScheduleGridProps> = ({
     const endMins = timeToMinutes(endTime);
     const totalMins = endMins - startMins;
 
-    // Memoize toggle handler
     const handleTogglePin = React.useCallback((day: Day) => {
         onTogglePinDay(day);
     }, [onTogglePinDay]);
 
-    // slots are ONLY the start hours
     const timeSlots = React.useMemo(() => Array.from({ length: Math.floor(totalMins / 60) }).map(
         (_, i) => minutesToTime(startMins + i * 60)
     ), [totalMins, startMins]);
@@ -67,13 +65,11 @@ const ScheduleGridBase: React.FC<ScheduleGridProps> = ({
             style={{
                 contain: isAnimating ? 'strict' : 'layout paint',
                 willChange: isAnimating ? 'transform' : 'auto',
-                // Prevent horizontal scrollbar flickering during layout shift
                 overflowX: isAnimating ? 'hidden' : 'auto'
             }}
             onClick={() => onSelectEntry(null, false)}
         >
             <div className="inline-flex min-w-full p-4">
-                {/* Time Column */}
                 <div className="w-20 sticky left-0 z-[60] bg-slate-950 border-r border-white/5 rounded-l-2xl">
                     <div className="h-12 border-b border-white/5" />
                     {timeSlots.map((time) => (
@@ -81,13 +77,11 @@ const ScheduleGridBase: React.FC<ScheduleGridProps> = ({
                             {time}
                         </div>
                     ))}
-                    {/* Improved End Time at the bottom */}
                     <div className="h-8 text-[10px] text-slate-400 flex items-center justify-center font-black tracking-widest uppercase border-t border-white/5 bg-white/5 rounded-bl-2xl">
                         {endTime}
                     </div>
                 </div>
 
-                {/* Day Columns */}
                 <div className="flex flex-1 min-w-0">
                     {days.map((day) => (
                         <DayColumnMemo
@@ -150,9 +144,7 @@ const DayColumn: React.FC<DayColumnProps> = ({ day, startTime, endTime, entries,
             if (!gridRect) return;
 
             const y = Math.max(0, offset.y - gridRect.top);
-            // Use computed content height (4.5rem = 72px per hour slot) instead of measured height
             const contentHeight = (totalMins / 60) * 72;
-            // Clamp to valid range - last valid slot is endTime - 60 (e.g., 16:00 if end is 17:00)
             const rawDropMins = Math.floor((y / contentHeight) * (totalMins / 60)) * 60 + startMins;
             const dropMins = Math.min(rawDropMins, endMins - 60);
 
@@ -178,13 +170,11 @@ const DayColumn: React.FC<DayColumnProps> = ({ day, startTime, endTime, entries,
 
                     if (draggedEntry.dayPresetGroupId) {
                         const groupEntries = allEntries.filter(e => e.dayPresetGroupId === draggedEntry.dayPresetGroupId);
-                        // Find the group's earliest start and latest end
                         const groupStartMins = Math.min(...groupEntries.map(e => timeToMinutes(e.startTime)));
                         const groupEndMins = Math.max(...groupEntries.map(e => timeToMinutes(e.endTime)));
 
-                        // Clamp offset so entire group stays within bounds
-                        const minOffset = startMins - groupStartMins; // Can't go before startMins
-                        const maxOffset = endMins - groupEndMins; // Can't go past endMins
+                        const minOffset = startMins - groupStartMins;
+                        const maxOffset = endMins - groupEndMins;
                         dragOffsetMins = Math.max(minOffset, Math.min(maxOffset, dragOffsetMins));
 
                         setHoverPreview(groupEntries.map(e => {
@@ -220,7 +210,6 @@ const DayColumn: React.FC<DayColumnProps> = ({ day, startTime, endTime, entries,
             const offset = monitor.getClientOffset();
             if (!offset) return;
 
-            // Check for DAY_PRESET drop
             const dropType = monitor.getItemType();
             if (dropType === 'DAY_PRESET') {
                 const preset = dayPresets.find(p => p.id === item.id);
@@ -231,9 +220,9 @@ const DayColumn: React.FC<DayColumnProps> = ({ day, startTime, endTime, entries,
                             ...template,
                             id: Math.random().toString(36).substring(2, 11),
                             day: day,
-                            dayPresetColor: preset.color, // Track which Day Preset added this
-                            dayPresetGroupId: groupId, // New: Assign group ID for visual grouping
-                            dayPresetId: preset.id // New: Assign template ID for live color syncing
+                            dayPresetColor: preset.color,
+                            dayPresetGroupId: groupId,
+                            dayPresetId: preset.id
                         });
                     });
                 }
@@ -244,9 +233,7 @@ const DayColumn: React.FC<DayColumnProps> = ({ day, startTime, endTime, entries,
             if (!gridRect) return;
 
             const y = Math.max(0, offset.y - gridRect.top);
-            // Use fixed slot height (4.5rem = 72px) instead of calculated from measured height
-            const slotHeight = 72; // 4.5rem in pixels
-            // Clamp to valid range - last valid slot is endTime - 60 (e.g., 16:00 if end is 17:00)
+            const slotHeight = 72;
             const rawDropMins = Math.floor(y / slotHeight) * 60 + startMins;
             const dropMins = Math.min(rawDropMins, endMins - 60);
 
@@ -256,14 +243,11 @@ const DayColumn: React.FC<DayColumnProps> = ({ day, startTime, endTime, entries,
                     const dragOffsetMins = dropMins - timeToMinutes(draggedEntry.startTime);
 
                     if (draggedEntry.dayPresetGroupId) {
-                        // Move entire group
                         const groupEntries = allEntries.filter(e => e.dayPresetGroupId === draggedEntry.dayPresetGroupId);
 
-                        // Find the group's earliest start and latest end
                         const groupStartMins = Math.min(...groupEntries.map(e => timeToMinutes(e.startTime)));
                         const groupEndMins = Math.max(...groupEntries.map(e => timeToMinutes(e.endTime)));
 
-                        // Clamp offset so entire group stays within bounds
                         const minOffset = startMins - groupStartMins;
                         const maxOffset = endMins - groupEndMins;
                         const clampedDragOffset = Math.max(minOffset, Math.min(maxOffset, dragOffsetMins));
@@ -282,7 +266,6 @@ const DayColumn: React.FC<DayColumnProps> = ({ day, startTime, endTime, entries,
                             });
                         });
                     } else {
-                        // Move single entry
                         onDeleteEntry(draggedEntry.id);
                         onAddEntry({
                             ...draggedEntry,
@@ -342,7 +325,7 @@ const DayColumn: React.FC<DayColumnProps> = ({ day, startTime, endTime, entries,
                         className={cn(
                             "p-1.5 rounded-lg transition-[transform,background-color,color,opacity] duration-200 active:scale-90 cursor-pointer opacity-0 group-hover/header:opacity-100",
                             isPinned
-                                ? "text-indigo-400 bg-indigo-400/10 opacity-100" // Always visible if pinned
+                                ? "text-indigo-400 bg-indigo-400/10 opacity-100"
                                 : "text-slate-500 hover:text-white hover:bg-white/10"
                         )}
                         title={isPinned ? "Tag lösen (Auto-Pin aus)" : "Tag anpinnen (Auto-Pin ein)"}
@@ -353,7 +336,6 @@ const DayColumn: React.FC<DayColumnProps> = ({ day, startTime, endTime, entries,
             </div>
             <div id={`grid-${day}`} className="relative">
                 <div className="relative" style={{ height: `${(totalMins / 60) * 4.5}rem` }}>
-                    {/* Grid lines */}
                     {Array.from({ length: Math.ceil(totalMins / 60) }).map((_, i) => (
                         <div
                             key={i}
@@ -362,7 +344,6 @@ const DayColumn: React.FC<DayColumnProps> = ({ day, startTime, endTime, entries,
                         />
                     ))}
 
-                    {/* Ghost block for D&D preview */}
                     {isOver && hoverPreview.map((ghost, idx) => (
                         <div
                             key={idx}
@@ -376,7 +357,6 @@ const DayColumn: React.FC<DayColumnProps> = ({ day, startTime, endTime, entries,
                         />
                     ))}
 
-                    {/* Entries */}
                     {entries
                         .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
                         .map((entry, i, sortedEntries) => {
@@ -453,7 +433,6 @@ const DraggableEntry: React.FC<DraggableEntryProps> = ({ entry, block, onDelete,
 
     const [showColors, setShowColors] = React.useState(false);
 
-    // Live color sync
     const presetTheme = dayPresets.find(p => p.id === entry.dayPresetId);
     const borderColor = presetTheme?.color || entry.dayPresetColor || 'rgba(255,255,255,0.2)';
 
@@ -494,15 +473,10 @@ const DraggableEntry: React.FC<DraggableEntryProps> = ({ entry, block, onDelete,
                 } : {})
             }}
         >
-            {/* Group Delete Button - Visible on hover for grouped items */}
             {entry.dayPresetGroupId && isFirstInGroup && !isSelected && (
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
-                        // This logic will be handled if we pass down a group delete handler, 
-                        // but for now we'll trigger simple delete. 
-                        // To properly delete the group, we should trigger a search in the parent.
-                        // I'll update App.tsx context or just pass a click event that the parent handles.
                         const event = new CustomEvent('delete-group', { detail: entry.dayPresetGroupId });
                         window.dispatchEvent(event);
                     }}
@@ -556,7 +530,6 @@ const DraggableEntry: React.FC<DraggableEntryProps> = ({ entry, block, onDelete,
                 </div>
             </div>
 
-            {/* Glossy overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
         </div>
     );

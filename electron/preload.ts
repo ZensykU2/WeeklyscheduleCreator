@@ -1,7 +1,4 @@
 import { contextBridge, ipcRenderer } from 'electron'
-
-// --------- Expose some API to the Renderer process ---------
-console.log('Preload: Initializing bridge...');
 contextBridge.exposeInMainWorld('electronTitleBar', {
     on(...args: Parameters<typeof ipcRenderer.on>) {
         const [channel, listener] = args
@@ -20,7 +17,6 @@ contextBridge.exposeInMainWorld('electronTitleBar', {
         return ipcRenderer.invoke(channel, ...omit)
     },
 
-    // You can expose other apts you need here.
     store: {
         get: (key: string) => ipcRenderer.invoke('store-get', key),
         set: (key: string, value: any) => ipcRenderer.invoke('store-set', key, value),

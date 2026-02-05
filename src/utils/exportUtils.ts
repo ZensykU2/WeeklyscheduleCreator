@@ -12,35 +12,26 @@ export async function exportToExcel(plan: WeekPlan, presets: TimeBlock[], settin
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(`${t('week')} ${plan.weekNumber}`);
-
-    // Calculate week dates
     const yearStart = new Date(plan.year, 0, 1);
     const weekStart = startOfWeek(addDays(yearStart, (plan.weekNumber - 1) * 7), { weekStartsOn: 1 });
     const weekEnd = addDays(weekStart, settings.workDays.length - 1);
 
-    // Month names based on locale
     const monthFormatter = new Intl.DateTimeFormat(lang === 'de' ? 'de-DE' : 'en-US', { month: 'short' });
     const startMonthShort = monthFormatter.format(weekStart);
     const endMonthShort = monthFormatter.format(weekEnd);
 
     const startDay = format(weekStart, 'd', { locale: lang === 'de' ? de : enUS });
     const endDay = format(weekEnd, 'd', { locale: lang === 'de' ? de : enUS });
-
-    // Format: If same month: "KW 5, 27. - 31. Jan 2026", if different: "KW 5, 27. Jan - 2. Feb 2026"
     const headerText = weekStart.getMonth() === weekEnd.getMonth()
         ? `${t('week')} ${plan.weekNumber}, ${startDay}. - ${endDay}. ${startMonthShort} ${plan.year}`
         : `${t('week')} ${plan.weekNumber}, ${startDay}. ${startMonthShort} - ${endDay}. ${endMonthShort} ${plan.year}`;
 
-    // Column widths
     worksheet.columns = [
         { key: 'time', width: 10 },
         ...settings.workDays.map(day => ({ key: day, width: 22 }))
     ];
-
-    // === HEADER SECTION ===
     const totalCols = settings.workDays.length + 1;
 
-    // Row 1: KW + Date range - single dark banner
     worksheet.mergeCells(1, 1, 1, totalCols);
     const headerCell = worksheet.getCell(1, 1);
     headerCell.value = headerText;
@@ -49,10 +40,8 @@ export async function exportToExcel(plan: WeekPlan, presets: TimeBlock[], settin
     headerCell.alignment = { horizontal: 'center', vertical: 'middle' };
     worksheet.getRow(1).height = 28;
 
-    // Row 2: Empty spacer row
     worksheet.getRow(2).height = 6;
 
-    // Row 3: Day headers
     const headerRow = worksheet.getRow(3);
     headerRow.getCell(1).value = t('time');
     settings.workDays.forEach((day, idx) => {
@@ -63,7 +52,6 @@ export async function exportToExcel(plan: WeekPlan, presets: TimeBlock[], settin
     headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
     headerRow.height = 24;
 
-    // Create time rows (60 min steps to match UI) - starting from row 4
     const startMins = timeToMinutes(settings.dayStart);
     const endMins = timeToMinutes(settings.dayEnd);
     const DATA_START_ROW = 4;
@@ -77,7 +65,6 @@ export async function exportToExcel(plan: WeekPlan, presets: TimeBlock[], settin
         row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
     }
 
-    // Map entries - adjusted for new header offset
     plan.entries.forEach(entry => {
         const colIndex = settings.workDays.indexOf(entry.day) + 2;
         if (colIndex < 2) return;
@@ -108,12 +95,10 @@ export async function exportToExcel(plan: WeekPlan, presets: TimeBlock[], settin
         };
     });
 
-    // Add Legend - positioned to align with schedule data
     const legendCol = settings.workDays.length + 3;
     const usedBlockIds = Array.from(new Set(plan.entries.map(e => e.blockId)));
     const usedPresets = presets.filter(p => usedBlockIds.includes(p.id));
 
-    // Type labels mapping
     const typeLabels: Record<string, string> = {
         'project-int': t('projectInt'),
         'project-ext': t('projectExt'),
@@ -124,7 +109,6 @@ export async function exportToExcel(plan: WeekPlan, presets: TimeBlock[], settin
     };
 
     if (usedPresets.length > 0) {
-        // Legend title at row 3 (same as day headers)
         worksheet.mergeCells(3, legendCol, 3, legendCol + 2);
         const legendTitleCell = worksheet.getCell(3, legendCol);
         legendTitleCell.value = t('legend');
@@ -138,7 +122,6 @@ export async function exportToExcel(plan: WeekPlan, presets: TimeBlock[], settin
             const typeCell = worksheet.getCell(legendRow, legendCol + 1);
             const nameCell = worksheet.getCell(legendRow, legendCol + 2);
 
-            // Color swatch
             colorCell.fill = {
                 type: 'pattern',
                 pattern: 'solid',
@@ -151,12 +134,10 @@ export async function exportToExcel(plan: WeekPlan, presets: TimeBlock[], settin
                 right: { style: 'thin', color: { argb: 'FF475569' } }
             };
 
-            // Type label (Schule, Projekt, etc)
             typeCell.value = typeLabels[preset.type] || preset.type;
             typeCell.font = { bold: true, size: 10, color: { argb: 'FF64748B' } };
             typeCell.alignment = { vertical: 'middle' };
 
-            // Name
             nameCell.value = preset.name;
             nameCell.font = { bold: true, size: 11, color: { argb: 'FF1E293B' } };
             nameCell.alignment = { vertical: 'middle' };
@@ -169,7 +150,6 @@ export async function exportToExcel(plan: WeekPlan, presets: TimeBlock[], settin
         worksheet.getColumn(legendCol + 2).width = 20;
     }
 
-    // Borders for all cells in range
     worksheet.eachRow((row, rowNumber) => {
         row.eachCell((cell) => {
             if (!cell.border) {
@@ -183,7 +163,6 @@ export async function exportToExcel(plan: WeekPlan, presets: TimeBlock[], settin
         });
     });
 
-    // Generate and download
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = window.URL.createObjectURL(blob);

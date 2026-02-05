@@ -19,16 +19,16 @@ export interface ScheduleEntry {
     id: string;
     blockId: string;
     day: Day;
-    startTime: string; // "08:00"
-    endTime: string;   // "09:30"
+    startTime: string;
+    endTime: string;
     isPersistent?: boolean;
     validFrom?: {
         year: number;
         week: number;
     };
-    dayPresetColor?: string; // Border color if entry came from a Day Preset
-    dayPresetGroupId?: string; // Group ID for visual grouping of items dropped together
-    dayPresetId?: string; // ID of the source Day Preset for live color syncing
+    dayPresetColor?: string;
+    dayPresetGroupId?: string;
+    dayPresetId?: string;
 }
 
 export interface DayPreset {
@@ -41,14 +41,14 @@ export interface DayPreset {
 export interface WeekPlan {
     weekNumber: number;
     year: number;
-    startDate: string; // ISO String
+    startDate: string;
     entries: ScheduleEntry[];
 }
 
 export interface Settings {
     workDays: Day[];
-    dayStart: string;   // "08:00"
-    dayEnd: string;     // "17:00"
+    dayStart: string;
+    dayEnd: string;
     exportFormat: 'excel' | 'googleSheets';
     pinnedDays: Day[];
     language: 'de' | 'en';

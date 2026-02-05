@@ -23,7 +23,6 @@ function getItemStyles(currentOffset: { x: number; y: number } | null) {
         return { display: 'none' };
     }
     const { x, y } = currentOffset;
-    // Center the preview on the cursor
     return {
         transform: `translate(${x - 140}px, ${y - 30}px)`,
         WebkitTransform: `translate(${x - 140}px, ${y - 30}px)`,

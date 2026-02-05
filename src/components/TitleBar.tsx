@@ -26,7 +26,6 @@ const TitleBar: React.FC = () => {
 
     return (
         <div className="h-8 bg-slate-950 flex items-center justify-between select-none border-b border-white/5 z-[100] relative">
-            {/* Drag Area - Only in the middle/background */}
             <div
                 className="absolute inset-0 z-0"
                 style={{ WebkitAppRegion: 'drag' } as any}

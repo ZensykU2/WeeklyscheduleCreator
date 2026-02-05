@@ -48,7 +48,6 @@ const DraggableEntryBase: React.FC<DraggableEntryProps> = ({ entry, block, onDel
 
     const [showColors, setShowColors] = useState(false);
 
-    // Live color sync
     const presetTheme = dayPresets.find(p => p.id === entry.dayPresetId);
     const borderColor = presetTheme?.color || entry.dayPresetColor || 'rgba(255,255,255,0.2)';
 
@@ -89,7 +88,6 @@ const DraggableEntryBase: React.FC<DraggableEntryProps> = ({ entry, block, onDel
                 } : {})
             }}
         >
-            {/* Top Resize Handle */}
             <div
                 className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize z-50 hover:bg-white/20 transition-colors rounded-t-xl"
                 onMouseDown={(e) => {
@@ -101,7 +99,6 @@ const DraggableEntryBase: React.FC<DraggableEntryProps> = ({ entry, block, onDel
                 }}
             />
 
-            {/* Group Delete Button - Visible on hover for grouped items */}
             {entry.dayPresetGroupId && isFirstInGroup && !isSelected && (
                 <button
                     onClick={(e) => {
@@ -162,7 +159,6 @@ const DraggableEntryBase: React.FC<DraggableEntryProps> = ({ entry, block, onDel
                 </div>
             </div>
 
-            {/* Bottom Resize Handle */}
             <div
                 className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize z-50 hover:bg-white/20 transition-colors rounded-b-xl"
                 onMouseDown={(e) => {
@@ -174,7 +170,6 @@ const DraggableEntryBase: React.FC<DraggableEntryProps> = ({ entry, block, onDel
                 }}
             />
 
-            {/* Glossy overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
         </div>
     );

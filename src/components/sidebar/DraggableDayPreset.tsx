@@ -24,7 +24,6 @@ const DraggableDayPresetBase: React.FC<DraggableDayPresetProps> = ({ preset, onD
         }),
     }), [preset.id]);
 
-    // Hide native drag preview - we use CustomDragLayer instead
     useEffect(() => {
         preview(getEmptyImage(), { captureDraggingState: true });
     }, [preview]);

@@ -56,7 +56,6 @@ function App() {
                             />
 
                             <main className="flex-1 p-4 flex flex-col overflow-hidden relative">
-                                {/* Subtle background decoration */}
                                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/5 blur-[120px] rounded-full pointer-events-none" style={{ willChange: 'opacity, transform', transform: 'translate3d(0,0,0)' }} />
                                 <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-600/5 blur-[120px] rounded-full pointer-events-none" style={{ willChange: 'opacity, transform', transform: 'translate3d(0,0,0)' }} />
 

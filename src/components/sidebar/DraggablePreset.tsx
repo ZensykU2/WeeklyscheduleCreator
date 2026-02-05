@@ -29,7 +29,6 @@ const DraggablePresetBase: React.FC<DraggablePresetProps> = ({ preset, onDelete,
         }),
     }), [preset.id]);
 
-    // Hide native drag preview - we use CustomDragLayer instead
     useEffect(() => {
         preview(getEmptyImage(), { captureDraggingState: true });
     }, [preview]);
@@ -59,7 +58,7 @@ const DraggablePresetBase: React.FC<DraggablePresetProps> = ({ preset, onDelete,
         if (editName.trim()) {
             onUpdate({ ...preset, name: editName.trim() });
         } else {
-            setEditName(preset.name); // Revert if empty
+            setEditName(preset.name);
         }
         setIsEditing(false);
     };
