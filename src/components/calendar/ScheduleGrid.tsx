@@ -77,12 +77,25 @@ const ScheduleGridBase: React.FC<ScheduleGridProps> = ({
                 {/* Time Column */}
                 <div className="w-20 sticky left-0 z-[60] bg-slate-950 border-r border-white/5 rounded-l-2xl">
                     <div className="h-12 border-b border-white/5" />
-                    {timeSlots.map((time) => (
-                        <div key={time} className="h-[4.5rem] text-[10px] text-slate-500 flex items-start justify-center pt-2 font-black tracking-widest uppercase relative">
-                            {time}
-                        </div>
-                    ))}
-                    {/* Improved End Time at the bottom */}
+                    {timeSlots.map((time, i) => {
+                        const slotStartMins = startMins + i * 60;
+                        const slotEndMins = slotStartMins + 60;
+                        const endTimeStr = minutesToTime(slotEndMins);
+                        return (
+                            <div key={time} className="h-[4.5rem] text-[10px] text-slate-500 flex flex-col items-center justify-center font-black tracking-widest uppercase relative leading-tight">
+                                <span>{time}</span>
+                                <span className="w-3 h-px bg-slate-800 my-0.5" />
+                                <span>{endTimeStr}</span>
+                            </div>
+                        );
+                    })}
+                    {/* End marker matches the last slot's end, might be redundant if we show ranges, 
+                        but let's keep it as a visual footer or remove if clutter. 
+                        User asked for "8:00 - 9:00". The last one "17:00" at bottom might be fine.
+                        Actually, having 8-9, 9-10... the last box 16-17. 
+                        The footer currently shows '17:00'.
+                        This is fine, it acts as a closing cap.
+                    */}
                     <div className="h-8 text-[10px] text-slate-400 flex items-center justify-center font-black tracking-widest uppercase border-t border-white/5 bg-white/5 rounded-bl-2xl">
                         {endTime}
                     </div>

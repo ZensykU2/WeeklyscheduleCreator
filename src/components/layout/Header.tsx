@@ -14,6 +14,8 @@ interface HeaderProps {
     onOpenSettings: () => void;
 }
 
+import { useTranslation } from '../../hooks/useTranslation';
+
 export const Header: React.FC<HeaderProps> = ({
     weekInfo,
     onPrevWeek,
@@ -26,6 +28,8 @@ export const Header: React.FC<HeaderProps> = ({
     onExport,
     onOpenSettings
 }) => {
+    const { t, lang } = useTranslation();
+
     return (
         <header className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-slate-950 z-30 shrink-0">
             <div className="flex items-center gap-6">
@@ -35,10 +39,10 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                     <div>
                         <h1 className="text-lg font-black text-white tracking-tight leading-none">
-                            KW {weekInfo.weekNumber}
+                            {t('week')} {weekInfo.weekNumber}
                         </h1>
                         <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                            {weekInfo.start.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} – {weekInfo.end.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            {weekInfo.start.toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', { day: '2-digit', month: '2-digit' })} – {weekInfo.end.toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         </p>
                     </div>
                 </div>
@@ -56,7 +60,7 @@ export const Header: React.FC<HeaderProps> = ({
                         onClick={onResetDate}
                         className="px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-all cursor-pointer"
                     >
-                        Heute
+                        {t('today')}
                     </button>
                     <button
                         onClick={onNextWeek}
@@ -73,7 +77,7 @@ export const Header: React.FC<HeaderProps> = ({
                         onClick={onUndo}
                         disabled={!canUndo}
                         className="p-1.5 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                        title="Rückgängig (Ctrl+Z)"
+                        title={`${t('undo')} (Ctrl+Z)`}
                     >
                         <Undo2 size={16} />
                     </button>
@@ -81,7 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
                         onClick={onRedo}
                         disabled={!canRedo}
                         className="p-1.5 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                        title="Wiederholen (Ctrl+Y)"
+                        title={`${t('redo')} (Ctrl+Y)`}
                     >
                         <Redo2 size={16} />
                     </button>
@@ -93,7 +97,7 @@ export const Header: React.FC<HeaderProps> = ({
                         className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg shadow-indigo-600/20 active:scale-95 text-[10px] font-black uppercase tracking-widest whitespace-nowrap cursor-pointer"
                     >
                         <FileDown size={14} />
-                        <span className="hidden xl:inline text-xs">Excel Export</span>
+                        <span className="hidden xl:inline text-xs">{t('export')}</span>
                     </button>
 
                     <button

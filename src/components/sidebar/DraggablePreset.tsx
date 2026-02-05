@@ -6,6 +6,7 @@ import { Trash2, Pencil } from 'lucide-react';
 import { useClickOutside } from '../../hooks/useClickOutside';
 import { ColorPicker } from '../ui/ColorPicker';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface DraggablePresetProps {
     preset: TimeBlock;
@@ -14,6 +15,7 @@ interface DraggablePresetProps {
 }
 
 const DraggablePresetBase: React.FC<DraggablePresetProps> = ({ preset, onDelete, onUpdate }) => {
+    const { t } = useTranslation();
     const [showColors, setShowColors] = useState(false);
     const pickerRef = useClickOutside(() => {
         if (showColors) setShowColors(false);
@@ -33,12 +35,12 @@ const DraggablePresetBase: React.FC<DraggablePresetProps> = ({ preset, onDelete,
     }, [preview]);
 
     const typeLabels: Record<TimeBlockType, string> = {
-        'project-int': 'Projekt (Int)',
-        'project-ext': 'Projekt (Ext)',
-        'school-reg': 'Schule',
-        'school-uk': 'ÜK',
-        'weiterbildung': 'Weiterbildung',
-        'break': 'Pause'
+        'project-int': t('projectInt'),
+        'project-ext': t('projectExt'),
+        'school-reg': t('school'),
+        'school-uk': t('uk'),
+        'weiterbildung': t('weiterbildung'),
+        'break': t('break')
     };
 
     const typeLabel = typeLabels[preset.type];
@@ -109,7 +111,7 @@ const DraggablePresetBase: React.FC<DraggablePresetProps> = ({ preset, onDelete,
                             setShowColors(false);
                         }}
                         className="p-1.5 hover:bg-black/20 rounded-lg transition-all text-white/80 hover:text-white cursor-pointer"
-                        title="Bearbeiten"
+                        title={t('create')}
                     >
                         <Pencil size={14} />
                     </button>
@@ -129,7 +131,7 @@ const DraggablePresetBase: React.FC<DraggablePresetProps> = ({ preset, onDelete,
                             onDelete(preset.id);
                         }}
                         className="p-1.5 hover:bg-black/20 rounded-lg transition-all text-white/80 hover:text-white cursor-pointer"
-                        title="Löschen"
+                        title={t('delete')}
                     >
                         <Trash2 size={14} />
                     </button>

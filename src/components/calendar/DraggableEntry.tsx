@@ -4,6 +4,7 @@ import { ScheduleEntry, TimeBlock, DayPreset } from '../../types';
 import { Trash2, GripVertical, Clock, Pin } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { useTranslation } from '../../hooks/useTranslation';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -13,8 +14,9 @@ export interface DraggableEntryProps {
     entry: ScheduleEntry;
     block?: TimeBlock;
     onDelete: (id: string) => void;
-    onDeleteGroup?: (groupId: string) => void; // New prop
+    onDeleteGroup?: (groupId: string) => void;
     onUpdate: (entry: ScheduleEntry) => void;
+    onResizeStart?: (id: string, edge: 'top' | 'bottom', initialY: number) => void; // Updated prop
     top: number;
     height: number;
     isSelected: boolean;
@@ -25,7 +27,8 @@ export interface DraggableEntryProps {
     dayPresets: DayPreset[];
 }
 
-const DraggableEntryBase: React.FC<DraggableEntryProps> = ({ entry, block, onDelete, onDeleteGroup, onUpdate, top, height, isSelected, onSelect, zIndex, isFirstInGroup, isLastInGroup, dayPresets }) => {
+const DraggableEntryBase: React.FC<DraggableEntryProps> = ({ entry, block, onDelete, onDeleteGroup, onUpdate, onResizeStart, top, height, isSelected, onSelect, zIndex, isFirstInGroup, isLastInGroup, dayPresets }) => {
+    const { t } = useTranslation();
     const [{ isDragging }, drag] = useDrag(() => ({
         type: 'ENTRY',
         item: { id: entry.id, type: 'ENTRY', dayPresetGroupId: entry.dayPresetGroupId },
@@ -35,12 +38,12 @@ const DraggableEntryBase: React.FC<DraggableEntryProps> = ({ entry, block, onDel
     }), [entry.id, entry.dayPresetGroupId]);
 
     const typeLabels: Record<string, string> = {
-        'project-int': 'Projekt (Int)',
-        'project-ext': 'Projekt (Ext)',
-        'school-reg': 'Schule',
-        'school-uk': 'ÜK',
-        'weiterbildung': 'Weiterbildung',
-        'break': 'Pause'
+        'project-int': t('projectInt'),
+        'project-ext': t('projectExt'),
+        'school-reg': t('school'),
+        'school-uk': t('uk'),
+        'weiterbildung': t('weiterbildung'),
+        'break': t('break')
     };
 
     const [showColors, setShowColors] = useState(false);
@@ -86,21 +89,31 @@ const DraggableEntryBase: React.FC<DraggableEntryProps> = ({ entry, block, onDel
                 } : {})
             }}
         >
+            {/* Top Resize Handle */}
+            <div
+                className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize z-50 hover:bg-white/20 transition-colors rounded-t-xl"
+                onMouseDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (onResizeStart) {
+                        onResizeStart(entry.id, 'top', e.clientY);
+                    }
+                }}
+            />
+
             {/* Group Delete Button - Visible on hover for grouped items */}
             {entry.dayPresetGroupId && isFirstInGroup && !isSelected && (
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
-                        // Call prop if available
                         if (onDeleteGroup) {
                             onDeleteGroup(entry.dayPresetGroupId!);
                         } else {
-                            // Fallback
                             onDelete(entry.id);
                         }
                     }}
                     className="absolute -top-3 -right-3 p-1.5 bg-red-600 hover:bg-red-500 text-white rounded-full shadow-lg scale-0 group-hover:scale-110 transition-all z-[200] cursor-pointer"
-                    title="Ganze Gruppe löschen"
+                    title={t('deleteGroup')}
                 >
                     <Trash2 size={12} />
                 </button>
@@ -108,12 +121,12 @@ const DraggableEntryBase: React.FC<DraggableEntryProps> = ({ entry, block, onDel
             <div className="flex flex-col gap-0.5 min-w-0">
                 <div className="flex items-center justify-between">
                     <span className="text-[9px] font-black uppercase tracking-wider text-white/70 drop-shadow-sm truncate pr-1">
-                        {block ? typeLabels[block.type] : 'Unbekannt'}
+                        {block ? typeLabels[block.type] : t('unknown')}
                     </span>
                     <GripVertical size={10} className="text-white/30 group-hover:text-white/60 transition-colors flex-shrink-0" />
                 </div>
                 <span className="text-xs font-black text-white truncate drop-shadow-md uppercase pr-2 line-clamp-1">
-                    {block?.name || 'Unknown'}
+                    {block?.name || t('unknown')}
                 </span>
             </div>
             <div className="flex items-center justify-between mt-auto">
@@ -133,7 +146,7 @@ const DraggableEntryBase: React.FC<DraggableEntryProps> = ({ entry, block, onDel
                                 ? "bg-indigo-500 text-white shadow-lg"
                                 : "bg-black/20 hover:bg-black/40 text-white/50 hover:text-white opacity-0 group-hover:opacity-100"
                         )}
-                        title={entry.isPersistent ? "Dauerhaft (In jeder Woche sichtbar)" : "Einmalig (Nur diese Woche)"}
+                        title={entry.isPersistent ? t('persistent') : t('once')}
                     >
                         <Pin size={10} className={cn(entry.isPersistent ? "fill-white" : "")} />
                     </button>
@@ -148,6 +161,18 @@ const DraggableEntryBase: React.FC<DraggableEntryProps> = ({ entry, block, onDel
                     </button>
                 </div>
             </div>
+
+            {/* Bottom Resize Handle */}
+            <div
+                className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize z-50 hover:bg-white/20 transition-colors rounded-b-xl"
+                onMouseDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (onResizeStart) {
+                        onResizeStart(entry.id, 'bottom', e.clientY);
+                    }
+                }}
+            />
 
             {/* Glossy overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />

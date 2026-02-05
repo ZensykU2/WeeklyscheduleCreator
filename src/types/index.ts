@@ -51,6 +51,8 @@ export interface Settings {
     dayEnd: string;     // "17:00"
     exportFormat: 'excel' | 'googleSheets';
     pinnedDays: Day[];
+    language: 'de' | 'en';
+    accentColor?: string;
 }
 
 export interface AppState {

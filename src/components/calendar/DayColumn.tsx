@@ -6,6 +6,7 @@ import { DraggableEntry } from './DraggableEntry';
 import { Pin, SaveAll } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { useTranslation } from '../../hooks/useTranslation';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -32,11 +33,61 @@ export interface DayColumnProps {
 }
 
 const DayColumnBase: React.FC<DayColumnProps> = ({ day, startTime, endTime, entries, allEntries, presets, onAddEntry, onDeleteEntry, onDeleteGroup, onMoveEntries, onUpdateEntry, selectedEntryIds, onSelectEntry, isPinned, onTogglePin, dayPresets, onSaveDayAsPreset }) => {
+    const { t } = useTranslation();
     const [hoverPreview, setHoverPreview] = React.useState<{ top: number; height: number; color?: string }[]>([]);
+
+    // Resizing State
+    const [resizingId, setResizingId] = React.useState<string | null>(null);
+    const [resizingEdge, setResizingEdge] = React.useState<'top' | 'bottom'>('bottom');
+    const [resizeStartMins, setResizeStartMins] = React.useState<number>(0);
+    const [resizeEndMins, setResizeEndMins] = React.useState<number>(0);
 
     const startMins = timeToMinutes(startTime);
     const endMins = timeToMinutes(endTime);
     const totalMins = endMins - startMins;
+
+    // Handle Global Resize Mouse Events
+    React.useEffect(() => {
+        if (!resizingId) return;
+
+        const handleMouseMove = (e: MouseEvent) => {
+            const gridRect = document.getElementById(`grid-${day}`)?.getBoundingClientRect();
+            if (!gridRect) return;
+
+            const entry = entries.find(e => e.id === resizingId);
+            if (!entry) return;
+
+            const mouseRelativeY = e.clientY - gridRect.top;
+            const minsAtMouse = Math.round((mouseRelativeY / 72)) * 60 + startMins;
+
+            if (resizingEdge === 'bottom') {
+                const newEnd = Math.max(resizeStartMins + 60, Math.min(minsAtMouse, endMins));
+                setResizeEndMins(newEnd);
+            } else {
+                const newStart = Math.max(startMins, Math.min(minsAtMouse, resizeEndMins - 60));
+                setResizeStartMins(newStart);
+            }
+        };
+
+        const handleMouseUp = () => {
+            const entry = entries.find(e => e.id === resizingId);
+            if (entry) {
+                onUpdateEntry({
+                    ...entry,
+                    startTime: minutesToTime(resizeStartMins),
+                    endTime: minutesToTime(resizeEndMins)
+                });
+            }
+            setResizingId(null);
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [resizingId, resizingEdge, resizeStartMins, resizeEndMins, entries, day, startMins, endMins, onUpdateEntry]);
 
     const [{ isOver }, drop] = useDrop(() => ({
         accept: ['PRESET', 'ENTRY', 'DAY_PRESET'],
@@ -228,7 +279,7 @@ const DayColumnBase: React.FC<DayColumnProps> = ({ day, startTime, endTime, entr
             )}
 
             <div className="h-12 flex items-center justify-between px-3 border-b border-white/5 bg-slate-950/20 sticky top-0 z-[1000] font-black text-[10px] text-slate-400 uppercase tracking-[0.2em] group/header hover:bg-slate-900/40 transition-[background-color] duration-200">
-                <span>{day}</span>
+                <span>{t(day.toLowerCase() as any)}</span>
                 <div className="flex items-center gap-1">
                     <button
                         onClick={(e) => {
@@ -236,7 +287,7 @@ const DayColumnBase: React.FC<DayColumnProps> = ({ day, startTime, endTime, entr
                             onSaveDayAsPreset(day);
                         }}
                         className="p-1.5 rounded-lg transition-[transform,background-color,color,opacity] duration-200 active:scale-90 cursor-pointer opacity-0 group-hover/header:opacity-100 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 relative z-50"
-                        title="Diesen Tag als Vorlage speichern"
+                        title={t('saveDayAsPreset')}
                     >
                         <SaveAll size={12} />
                     </button>
@@ -251,7 +302,7 @@ const DayColumnBase: React.FC<DayColumnProps> = ({ day, startTime, endTime, entr
                                 ? "text-indigo-400 bg-indigo-400/10 opacity-100" // Always visible if pinned
                                 : "text-slate-500 hover:text-white hover:bg-white/10"
                         )}
-                        title={isPinned ? "Tag lösen (Auto-Pin aus)" : "Tag anpinnen (Auto-Pin ein)"}
+                        title={isPinned ? t('unpinDay') : t('pinDay')}
                     >
                         <Pin size={12} className={cn(isPinned && "fill-current")} />
                     </button>
@@ -300,19 +351,37 @@ const DayColumnBase: React.FC<DayColumnProps> = ({ day, startTime, endTime, entr
                                 ? i === sortedEntries.length - 1 || sortedEntries[i + 1].dayPresetGroupId !== entry.dayPresetGroupId
                                 : true;
 
+                            // Calculate live height and preview entry during resize
+                            const isResizing = entry.id === resizingId;
+                            const liveStartMins = isResizing ? resizeStartMins : entryStartMins;
+                            const liveEndMins = isResizing ? resizeEndMins : entryEndMins;
+
+                            const currentTop = ((liveStartMins - startMins) / 60) * 4.5;
+                            const currentHeight = ((liveEndMins - liveStartMins) / 60) * 4.5;
+
+                            const previewEntry = isResizing
+                                ? { ...entry, startTime: minutesToTime(liveStartMins), endTime: minutesToTime(liveEndMins) }
+                                : entry;
+
                             return (
                                 <DraggableEntry
                                     key={entry.id}
-                                    entry={entry}
+                                    entry={previewEntry}
                                     block={block}
                                     onDelete={onDeleteEntry}
                                     onDeleteGroup={onDeleteGroup}
                                     onUpdate={onUpdateEntry}
-                                    top={top}
-                                    height={height}
+                                    onResizeStart={(id, edge, y) => {
+                                        setResizingId(id);
+                                        setResizingEdge(edge);
+                                        setResizeStartMins(entryStartMins);
+                                        setResizeEndMins(entryEndMins);
+                                    }}
+                                    top={currentTop}
+                                    height={currentHeight}
                                     isSelected={selectedEntryIds.has(entry.id)}
                                     onSelect={(multi) => onSelectEntry(entry.id, multi)}
-                                    zIndex={10 + i}
+                                    zIndex={isResizing ? 1000 : 10 + i}
                                     isFirstInGroup={isFirstInGroup}
                                     isLastInGroup={isLastInGroup}
                                     dayPresets={dayPresets}

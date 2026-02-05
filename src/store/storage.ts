@@ -2,7 +2,7 @@ import { TimeBlock, WeekPlan, Settings, ScheduleEntry, DayPreset } from '../type
 
 interface StoreData {
     presets: TimeBlock[];
-    weekPlans: Record<string, WeekPlan>; // key: "year-week"
+    weekPlans: Record<string, WeekPlan>;
     settings: Settings;
 }
 
@@ -11,12 +11,10 @@ const DEFAULT_SETTINGS: Settings = {
     dayStart: '08:00',
     dayEnd: '17:00',
     exportFormat: 'excel',
-    pinnedDays: []
+    pinnedDays: [],
+    language: 'de',
+    accentColor: '#3b82f6'
 };
-
-// Mock store for now since we're in the renderer and need to handle IPC for real electron-store
-// I will implement the IPC bridge later if needed, but for now let's use localStorage for simplicity
-// or assume electron-store is handled in the main process.
 
 export const storage = {
     getSettings: async (): Promise<Settings> => {

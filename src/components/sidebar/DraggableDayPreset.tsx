@@ -6,6 +6,7 @@ import { Trash2, Pencil, LayoutTemplate } from 'lucide-react';
 import { useClickOutside } from '../../hooks/useClickOutside';
 import { ColorPicker } from '../ui/ColorPicker';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface DraggableDayPresetProps {
     preset: DayPreset;
@@ -14,6 +15,7 @@ interface DraggableDayPresetProps {
 }
 
 const DraggableDayPresetBase: React.FC<DraggableDayPresetProps> = ({ preset, onDelete, onUpdate }) => {
+    const { t } = useTranslation();
     const [{ isDragging }, drag, preview] = useDrag(() => ({
         type: 'DAY_PRESET',
         item: { id: preset.id },
@@ -97,7 +99,7 @@ const DraggableDayPresetBase: React.FC<DraggableDayPresetProps> = ({ preset, onD
                         ) : (
                             <span className="text-sm font-bold text-white truncate">{preset.name}</span>
                         )}
-                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{preset.entries.length} Einträge</span>
+                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{preset.entries.length} {t('entriesCount')}</span>
                     </div>
                 </div>
 

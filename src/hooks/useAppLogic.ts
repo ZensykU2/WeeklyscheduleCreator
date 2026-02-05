@@ -12,7 +12,8 @@ export const useAppLogic = () => {
         dayStart: '08:00',
         dayEnd: '17:00',
         exportFormat: 'excel',
-        pinnedDays: []
+        pinnedDays: [],
+        language: 'de'
     });
 
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -200,6 +201,15 @@ export const useAppLogic = () => {
 
     const handleAddEntry = (entry: ScheduleEntry) => {
         setWeekPlan(prev => {
+            // Restore Auto-Pin Logic: If day is pinned, force persistence
+            if (settings.pinnedDays?.includes(entry.day)) {
+                entry.isPersistent = true;
+                // Set validFrom if not present (though usually handled by creation context, but safe to add)
+                if (!entry.validFrom) {
+                    entry.validFrom = { year: weekInfo.year, week: weekInfo.weekNumber };
+                }
+            }
+
             const newStart = timeToMinutes(entry.startTime);
             const newEnd = timeToMinutes(entry.endTime);
 
@@ -314,12 +324,37 @@ export const useAppLogic = () => {
     // New action to move multiple entries atomically without triggering deletion splitting
     const handleMoveEntries = (entriesToMove: { id: string; day: Day; startTime: string; endTime: string }[]) => {
         setWeekPlan(prev => {
-            const entries = [...prev.entries];
+            const movingIds = new Set(entriesToMove.map(e => e.id));
+
+            // Calculate new ranges for collision detection
+            const newRanges = entriesToMove.map(e => ({
+                day: e.day,
+                start: timeToMinutes(e.startTime),
+                end: timeToMinutes(e.endTime)
+            }));
+
+            // Filter out entries that overlap with the NEW positions (unless they are being moved themselves)
+            const nonOverlapping = prev.entries.filter(e => {
+                // Always keep valid moving entries (we update them below)
+                if (movingIds.has(e.id)) return true;
+
+                // Check collision with ANY new range
+                const isOverlapping = newRanges.some(range => {
+                    if (e.day !== range.day) return false;
+                    const eStart = timeToMinutes(e.startTime);
+                    const eEnd = timeToMinutes(e.endTime);
+                    return range.start < eEnd && range.end > eStart;
+                });
+
+                return !isOverlapping;
+            });
+
+            // Map updates to the filtered list
             const updates = new Map(entriesToMove.map(e => [e.id, e]));
 
             return {
                 ...prev,
-                entries: entries.map(e => {
+                entries: nonOverlapping.map(e => {
                     const update = updates.get(e.id);
                     if (update) {
                         return {
@@ -352,9 +387,14 @@ export const useAppLogic = () => {
         });
 
         if (newDeletionRecords.length > 0) {
-            const newDeletedSlots = [...deletedSlots, ...newDeletionRecords];
-            setDeletedSlots(newDeletedSlots);
-            await storage.setDeletedPersistentSlots(newDeletedSlots);
+            // Avoid duplicates when adding to deletedSlots
+            setDeletedSlots(prev => {
+                const existingSignatures = new Set(prev.map(ds => `${ds.day}-${ds.startTime}`));
+                const distinctNew = newDeletionRecords.filter(r => !existingSignatures.has(`${r.day}-${r.startTime}`));
+                const updated = [...prev, ...distinctNew];
+                storage.setDeletedPersistentSlots(updated);
+                return updated;
+            });
         }
 
         setWeekPlan(prev => ({
@@ -369,11 +409,95 @@ export const useAppLogic = () => {
         });
     };
 
-    const handleUpdateEntry = (entry: ScheduleEntry) => {
-        setWeekPlan(prev => ({
-            ...prev,
-            entries: prev.entries.map(e => e.id === entry.id ? entry : e)
-        }));
+    const handleUpdateEntry = async (entry: ScheduleEntry) => {
+        const newStart = timeToMinutes(entry.startTime);
+        const newEnd = timeToMinutes(entry.endTime);
+
+        setWeekPlan(prev => {
+            const updatedEntries: ScheduleEntry[] = [];
+            const itemsToRemove: ScheduleEntry[] = [];
+
+            prev.entries.forEach(e => {
+                if (e.id === entry.id) return;
+                if (e.day !== entry.day) {
+                    updatedEntries.push(e);
+                    return;
+                }
+
+                const eStart = timeToMinutes(e.startTime);
+                const eEnd = timeToMinutes(e.endTime);
+
+                // No overlap
+                if (newEnd <= eStart || newStart >= eEnd) {
+                    updatedEntries.push(e);
+                    return;
+                }
+
+                // Fully covered
+                if (newStart <= eStart && newEnd >= eEnd) {
+                    itemsToRemove.push(e);
+                    return;
+                }
+
+                // Overlaps top of existing (updated entry extends into top of 'e')
+                if (newEnd > eStart && newEnd < eEnd && newStart <= eStart) {
+                    const clippedStart = newEnd;
+                    if (eEnd - clippedStart >= 60) {
+                        updatedEntries.push({ ...e, startTime: minutesToTime(clippedStart) });
+                    } else {
+                        itemsToRemove.push(e);
+                    }
+                    return;
+                }
+
+                // Overlaps bottom of existing (updated entry extends into bottom of 'e')
+                if (newStart < eEnd && newStart > eStart && newEnd >= eEnd) {
+                    const clippedEnd = newStart;
+                    if (clippedEnd - eStart >= 60) {
+                        updatedEntries.push({ ...e, endTime: minutesToTime(clippedEnd) });
+                    } else {
+                        itemsToRemove.push(e);
+                    }
+                    return;
+                }
+
+                // Updated entry is inside existing entry (shouldn't happen with simple resize, but handled for safety)
+                // Split existing entry? For now, let's just delete it to keep it simple as per request context
+                if (newStart > eStart && newEnd < eEnd) {
+                    itemsToRemove.push(e);
+                    return;
+                }
+
+                // Fallback (should be covered above)
+                itemsToRemove.push(e);
+            });
+
+            // Handle persistent deletion for fully removed items
+            if (itemsToRemove.length > 0) {
+                const newDeletionRecords = itemsToRemove
+                    .filter(e => e.isPersistent)
+                    .map(e => ({
+                        day: e.day,
+                        startTime: e.startTime,
+                        deletedInWeek: { year: weekInfo.year, week: weekInfo.weekNumber }
+                    }));
+
+                if (newDeletionRecords.length > 0) {
+                    setDeletedSlots(prevDel => {
+                        const existingSignatures = new Set(prevDel.map(ds => `${ds.day}-${ds.startTime}`));
+                        const distinctNew = newDeletionRecords.filter(r => !existingSignatures.has(`${r.day}-${r.startTime}`));
+                        const updated = [...prevDel, ...distinctNew];
+                        storage.setDeletedPersistentSlots(updated);
+                        return updated;
+                    });
+                }
+            }
+
+            return {
+                ...prev,
+                entries: [...updatedEntries, entry]
+            };
+        });
     };
 
     const handleExport = async () => {
@@ -402,23 +526,102 @@ export const useAppLogic = () => {
     };
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
-        if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
-            e.preventDefault();
-            if (e.shiftKey) {
-                redo();
-            } else {
+        // Use keyCodes for layout independence: Z=90, Y=89, D=68
+        if (e.ctrlKey || e.metaKey) {
+            if (e.keyCode === 90) { // Z
+                e.preventDefault();
                 undo();
+            } else if (e.keyCode === 89) { // Y
+                e.preventDefault();
+                redo();
+            } else if (e.keyCode === 68) { // D
+                // Duplicate Logic
+                if (selectedEntryIds.size > 0) {
+                    e.preventDefault();
+
+                    const entriesToDuplicate = weekPlan.entries.filter(e => selectedEntryIds.has(e.id));
+                    if (entriesToDuplicate.length === 0) return;
+
+                    const newEntries: ScheduleEntry[] = [];
+                    const newSelectedIds = new Set<string>();
+
+                    // Group by dayPresetGroupId to preserve bundle structure
+                    const groups = new Map<string, ScheduleEntry[]>(); // groupId -> entries
+                    const singles: ScheduleEntry[] = [];
+
+                    entriesToDuplicate.forEach(entry => {
+                        if (entry.dayPresetGroupId) {
+                            const existing = groups.get(entry.dayPresetGroupId) || [];
+                            existing.push(entry);
+                            groups.set(entry.dayPresetGroupId, existing);
+                        } else {
+                            singles.push(entry);
+                        }
+                    });
+
+                    // Handle Groups: Assign NEW Group ID for each bundle
+                    groups.forEach((groupEntries) => {
+                        const newGroupId = uuidv4();
+                        groupEntries.forEach(entry => {
+                            const newEntry: ScheduleEntry = {
+                                ...entry,
+                                id: uuidv4(),
+                                dayPresetGroupId: newGroupId,
+                                // Duplicates inherit persistence if original had it?
+                                // Usually yes. But if moving them, user might want to decide.
+                                // Let's keep strict copy.
+                            };
+                            newEntries.push(newEntry);
+                            newSelectedIds.add(newEntry.id);
+                        });
+                    });
+
+                    // Handle Singles
+                    singles.forEach(entry => {
+                        const newEntry: ScheduleEntry = {
+                            ...entry,
+                            id: uuidv4(),
+                        };
+                        newEntries.push(newEntry);
+                        newSelectedIds.add(newEntry.id);
+                    });
+
+                    // Append directly to allow stacking (visual indication of duplicate)
+                    setWeekPlan(prev => ({
+                        ...prev,
+                        entries: [...prev.entries, ...newEntries]
+                    }));
+                    setSelectedEntryIds(newSelectedIds);
+                }
             }
-        } else if ((e.metaKey || e.ctrlKey) && e.key === 'y') {
-            e.preventDefault();
-            redo();
-        } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        }
+
+        if (e.key === 'Delete' || e.key === 'Backspace') {
             if (selectedEntryIds.size > 0) {
+                // Determine if we are deleting groups
+                // If any selected entry is part of a group, does the user mean to delete the WHOLE group?
+                // The previous logic was: `handleDeleteEntry` deletes single, `handleDeleteGroup` deletes group.
+                // If I press DELETE on a selected group item, usually I expect the whole group to go if I selected it.
+                // If I click *one* item of a group, `selectedEntryIds` has 1 item.
+                // If I click *group*, `selectedEntryIds` has *all* items (if selection logic does that).
+                // Let's rely on `handleDeleteEntry` or `handleDeleteGroup` explicitly?
+                // Actually, strict deletion of SELECTED items is safest.
+                // `handleDeleteEntry` splits bundles if some are left.
+                // If I select ALL items of a bundle and call `handleDeleteEntry` for each,
+                // the bundle logic might get weird if processed sequentially.
+                // Better: Check if we are deleting entire groups.
+
+                // For now, iterate and delete. `handleDeleteEntry` (refactored) handles splitting.
+                // If I delete A, B, C of Group G.
+                // Delete A -> B,C remain (split?).
+                // Delete B -> C remain.
+                // Delete C -> Gone.
+                // Effectively works.
                 selectedEntryIds.forEach(id => handleDeleteEntry(id));
                 setSelectedEntryIds(new Set());
             }
         }
-    }, [undo, redo, selectedEntryIds]);
+    }, [undo, redo, selectedEntryIds, weekPlan.entries, setWeekPlan, handleDeleteEntry]);
 
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown);
@@ -443,12 +646,6 @@ export const useAppLogic = () => {
                 entries: prev.entries.map(e => e.day === day ? { ...e, isPersistent: true } : e)
             }));
         } else {
-            // If we are unpinning (turning OFF), optional: remove persistence? 
-            // Usually users expect "Pin Day" -> "Make everything persistent". Unpin might not necessarily revert.
-            // But let's assume it should toggle accordingly for "live" behavior?
-            // Actually, "Pinning" usually implies functionality for *future* drops. 
-            // The request says "pinning the day doesn't automatically pin all the items anymore in that day".
-            // So on toggle ON, we set True. On toggle OFF, we set False.
             setWeekPlan(prev => ({
                 ...prev,
                 entries: prev.entries.map(e => e.day === day ? { ...e, isPersistent: false } : e)

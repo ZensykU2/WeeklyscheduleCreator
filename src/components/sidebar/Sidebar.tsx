@@ -7,6 +7,7 @@ import { twMerge } from 'tailwind-merge';
 import { DraggablePreset } from './DraggablePreset';
 import { DraggableDayPreset } from './DraggableDayPreset';
 import { AddPresetForm } from './AddPresetForm';
+import { useTranslation } from '../../hooks/useTranslation';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -30,6 +31,7 @@ interface SidebarProps {
 
 const SidebarBase: React.FC<SidebarProps> = ({ width, onWidthChange, isCollapsed, onToggleCollapse, onAnimationChange, presets, onAddPreset, onDeletePreset, onUpdatePreset, dayPresets, onAddDayPreset, onDeleteDayPreset, onUpdateDayPreset }) => {
     const [isAdding, setIsAdding] = useState(false);
+    const { t } = useTranslation();
     const [isResizing, setIsResizing] = useState(false);
     // Track animation state to apply optimizations during transitions
     const [isTransitioning, setIsTransitioning] = useState(false);
@@ -151,8 +153,8 @@ const SidebarBase: React.FC<SidebarProps> = ({ width, onWidthChange, isCollapsed
 
                     <div className="p-6 pb-2 flex items-center justify-between">
                         <div className="flex flex-col">
-                            <h2 className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">Kategorien</h2>
-                            <span className="text-lg font-black text-white tracking-tight">Vorlagen</span>
+                            <h2 className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">{t('configuration')}</h2>
+                            <span className="text-lg font-black text-white tracking-tight">{t('addPreset')}</span>
                         </div>
                         {!isAdding && (
                             <button
@@ -202,7 +204,7 @@ const SidebarBase: React.FC<SidebarProps> = ({ width, onWidthChange, isCollapsed
                                     <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-slate-600 group-hover:bg-indigo-500/10 group-hover:text-indigo-400 transition-colors">
                                         <Plus size={24} />
                                     </div>
-                                    <p className="text-xs font-medium text-slate-600 max-w-[160px] leading-relaxed">Keine Vorlagen vorhanden. Klicke hier oder auf das + oben.</p>
+                                    <p className="text-xs font-medium text-slate-600 max-w-[160px] leading-relaxed">{t('noPresets')}</p>
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -212,12 +214,9 @@ const SidebarBase: React.FC<SidebarProps> = ({ width, onWidthChange, isCollapsed
                             <>
                                 <div className="h-px bg-white/10 my-4 mx-2" />
                                 <div className="px-1 flex items-center gap-3 mb-4">
-                                    <div className="p-2 rounded-lg bg-indigo-500/10">
-                                        <LayoutTemplate size={18} className="text-indigo-400" />
-                                    </div>
                                     <div className="flex flex-col">
-                                        <h2 className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">Ganzer Tag</h2>
-                                        <span className="text-lg font-black text-white tracking-tight leading-tight">Tagesvorlagen</span>
+                                        <h2 className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em]">{t('templates')}</h2>
+                                        <span className="text-lg font-black text-white tracking-tight leading-tight">{t('templates')}</span>
                                     </div>
                                 </div>
                                 <div className="space-y-3">

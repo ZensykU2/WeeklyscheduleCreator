@@ -3,26 +3,33 @@ import { WeekPlan, TimeBlock, Settings } from '../types';
 import { timeToMinutes } from './dateUtils';
 import { format, startOfWeek, addDays } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { translations } from './translations';
+import { enUS } from 'date-fns/locale';
 
 export async function exportToExcel(plan: WeekPlan, presets: TimeBlock[], settings: Settings) {
+    const lang = settings.language || 'de';
+    const t = (key: keyof typeof translations.de) => translations[lang][key] || key;
+
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet(`KW ${plan.weekNumber}`);
+    const worksheet = workbook.addWorksheet(`${t('week')} ${plan.weekNumber}`);
 
     // Calculate week dates
     const yearStart = new Date(plan.year, 0, 1);
     const weekStart = startOfWeek(addDays(yearStart, (plan.weekNumber - 1) * 7), { weekStartsOn: 1 });
     const weekEnd = addDays(weekStart, settings.workDays.length - 1);
 
-    // Short month names in German
-    const shortMonths = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sept', 'Okt', 'Nov', 'Dez'];
-    const startMonthShort = shortMonths[weekStart.getMonth()];
-    const endMonthShort = shortMonths[weekEnd.getMonth()];
-    const startDay = format(weekStart, 'd', { locale: de });
-    const endDay = format(weekEnd, 'd', { locale: de });
+    // Month names based on locale
+    const monthFormatter = new Intl.DateTimeFormat(lang === 'de' ? 'de-DE' : 'en-US', { month: 'short' });
+    const startMonthShort = monthFormatter.format(weekStart);
+    const endMonthShort = monthFormatter.format(weekEnd);
+
+    const startDay = format(weekStart, 'd', { locale: lang === 'de' ? de : enUS });
+    const endDay = format(weekEnd, 'd', { locale: lang === 'de' ? de : enUS });
+
     // Format: If same month: "KW 5, 27. - 31. Jan 2026", if different: "KW 5, 27. Jan - 2. Feb 2026"
     const headerText = weekStart.getMonth() === weekEnd.getMonth()
-        ? `KW ${plan.weekNumber}, ${startDay}. - ${endDay}. ${startMonthShort} ${plan.year}`
-        : `KW ${plan.weekNumber}, ${startDay}. ${startMonthShort} - ${endDay}. ${endMonthShort} ${plan.year}`;
+        ? `${t('week')} ${plan.weekNumber}, ${startDay}. - ${endDay}. ${startMonthShort} ${plan.year}`
+        : `${t('week')} ${plan.weekNumber}, ${startDay}. ${startMonthShort} - ${endDay}. ${endMonthShort} ${plan.year}`;
 
     // Column widths
     worksheet.columns = [
@@ -47,9 +54,9 @@ export async function exportToExcel(plan: WeekPlan, presets: TimeBlock[], settin
 
     // Row 3: Day headers
     const headerRow = worksheet.getRow(3);
-    headerRow.getCell(1).value = 'Zeit';
+    headerRow.getCell(1).value = t('time');
     settings.workDays.forEach((day, idx) => {
-        headerRow.getCell(idx + 2).value = day;
+        headerRow.getCell(idx + 2).value = t(day.toLowerCase() as any);
     });
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } };
@@ -89,7 +96,7 @@ export async function exportToExcel(plan: WeekPlan, presets: TimeBlock[], settin
         }
 
         const cell = worksheet.getCell(startRow, colIndex);
-        cell.value = block?.name || 'Unknown';
+        cell.value = block?.name || t('unknown');
         cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${color}` } };
         cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
@@ -108,19 +115,19 @@ export async function exportToExcel(plan: WeekPlan, presets: TimeBlock[], settin
 
     // Type labels mapping
     const typeLabels: Record<string, string> = {
-        'project-int': 'Projekt (Int)',
-        'project-ext': 'Projekt (Ext)',
-        'school-reg': 'Schule',
-        'school-uk': 'ÜK',
-        'weiterbildung': 'Weiterbildung',
-        'break': 'Pause'
+        'project-int': t('projectInt'),
+        'project-ext': t('projectExt'),
+        'school-reg': t('school'),
+        'school-uk': t('uk'),
+        'weiterbildung': t('weiterbildung'),
+        'break': t('break')
     };
 
     if (usedPresets.length > 0) {
         // Legend title at row 3 (same as day headers)
         worksheet.mergeCells(3, legendCol, 3, legendCol + 2);
         const legendTitleCell = worksheet.getCell(3, legendCol);
-        legendTitleCell.value = 'LEGENDE';
+        legendTitleCell.value = t('legend');
         legendTitleCell.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
         legendTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } };
         legendTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
