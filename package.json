@@ -41,5 +41,25 @@
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^19.2.4",
     "tailwind-merge": "^3.4.0"
+  },
+  "build": {
+    "appId": "com.wochenplan.app",
+    "productName": "Wochenplan",
+    "directories": {
+      "output": "dist_build"
+    },
+    "win": {
+      "icon": "assets/icon.png",
+      "target": [
+        "nsis"
+      ]
+    },
+    "files": [
+      "dist-electron/**/*",
+      "dist/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "asar": true
   }
 }

@@ -1,12 +1,14 @@
 # Wochenplan
 
-A high-performance, Electron-based weekly planning application designed for maximum visual fluidity and efficiency.
+A Electron-based weekly planning application designed for maximum visual fluidity and efficiency.
+You can download it on the side from the releases or manually set it up and build it.
 
 ## Key Features
 - **Ultra-Smooth UI**: Optimized transitions and hardware-accelerated animations (60fps+ focus).
 - **Persistent Entries**: Smart handling of recurring vs. one-time schedule items.
 - **Custom Presets**: Create and manage templates for recurring tasks and entire day schedules.
 - **Modern Aesthetics**: Sleek dark mode design with customizable accent colors.
+- **Multilingual Support**: Fully localized in German and English with reactive switching.
 - **Desktop Ready**: Built with Electron for a native desktop experience.
 
 ## Quick Start
@@ -33,6 +35,7 @@ graph TD
     D -->|Undo/Redo| E[AppState]
     C --> F[ScheduleGrid]
     C --> G[Sidebar]
+    C --> H[LanguageContext]
 ```
 
 ## Features & Shortcuts
@@ -65,7 +68,7 @@ app.commandLine.appendSwitch('force-gpu-rasterization');
 ## Project Structure
 - `electron/`: Native process management and IPC setup.
 - `src/components/`: Modular UI (Schedule, Sidebar, Settings).
-- `src/hooks/`: Business logic (History, Interaction).
+- `src/hooks/`: Business logic (`useAppLogic`, `useHistory`).
 - `src/utils/`: Time math and file export generators.
 - `src/types/`: Domain logic definitions.
 

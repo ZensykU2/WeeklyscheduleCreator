@@ -29,6 +29,7 @@ function createWindow() {
         autoHideMenuBar: true,
         frame: false, // Remove default window controls
         backgroundColor: '#020617', // Match slate-950
+        icon: path.join(__dirname, VITE_DEV_SERVER_URL ? '../assets/icon.png' : '../assets/icon.png'), // Fallback to same path as we pack it
     })
 
     if (VITE_DEV_SERVER_URL) {

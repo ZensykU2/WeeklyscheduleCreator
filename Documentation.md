@@ -6,7 +6,12 @@ Wochenplan is designed as a **high-precision scheduler** that combines the respo
 ---
 
 ## 1. State Orchestration & History
-The application uses a centralized state pattern in `App.tsx` managed by a custom `useHistory` hook.
+The application uses a centralized state pattern managed by a custom `useAppLogic` hook, which wraps `useHistory` for undo/redo capabilities.
+
+### `useAppLogic` Hook
+- **Purpose**: Encapsulates all business logic (CRUD operations, drag-and-drop orchestration, persistence).
+- **Actions**: Exposes memoized actions (`handleAddEntry`, `handleDeleteEntry`, `handleMoveEntries`, etc.) to components.
+- **State**: Manages `WeekPlan`, `Presets`, and `Settings`.
 
 ### `useHistory` Stack
 - **`past`**: A stack of previous `AppState` objects.
@@ -51,7 +56,22 @@ To prevent historical data corruption:
 
 ---
 
-## 4. Performance & Rendering
+## 4. Localization (i18n)
+Managed via a central React Context to ensure reactive UI updates across the entire application.
+
+### `LanguageContext` & `LanguageProvider`
+- **Purpose**: Provides the current `lang` (de/en) and the `t()` translation function to all child components.
+- **Location**: `src/contexts/LanguageContext.tsx`.
+- **Implementation**: Injected at the root of `App.tsx` to wrap the entire viewport.
+
+### Translation Engine
+- **Dictionary**: Located in `src/utils/translations.ts`.
+- **Hook**: `useTranslation` abstracts the context consumption, allowing any component to access translations via `const { t } = useTranslation();`.
+- **Reactivity**: Since the `language` is passed from the global `settings` state into the `LanguageProvider`, updating the setting immediately triggers a re-render of all translated nodes.
+
+---
+
+## 5. Performance & Rendering
 Targeting a consistent 60fps experience in Electron.
 
 ### GPU Layering
